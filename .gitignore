@@ -1,0 +1,11 @@
+.envrc
+vendored/
+.cache
+.tox
+*.pyc
+.idea
+build/
+safe*/*
+!safe*/*.kt
+functions/*/safe*/*
+!functions/*/safe*/*.kt

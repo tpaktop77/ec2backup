@@ -1,0 +1,71 @@
+{
+  "Comment": "A state machine that submits a Job to AWS Batch and monitors the Job until it completes.",
+  "StartAt": "Create AMI",
+  "States": {
+    "Create AMI": {
+      "Type": "Task",
+      "Resource": { "function_name": "create_ami" },
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 10,
+          "MaxAttempts": 5,
+          "BackoffRate": 1.0
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "IntervalSeconds": 5,
+          "MaxAttempts": 3,
+          "BackoffRate": 1.0
+        }
+      ],
+      "Next": "Check AMI Status"
+    },
+    "Check AMI Status": {
+      "Type": "Task",
+      "Resource": { "function_name": "check_ami_status"},
+      "Next": "Choose Next Step"
+    },
+    "Choose Next Step": {
+      "Type" : "Choice",
+      "Choices": [
+        {
+          "Variable": "$.ami_status",
+          "StringEquals": "available",
+          "Next": "Clean AMI Images"
+        },
+        {
+          "Variable": "$.ami_status",
+          "StringEquals": "pending",
+          "Next": "Wait 10 seconds"
+        },
+        {
+          "Variable": "$.ami_status",
+          "StringEquals": "failed",
+          "Next": "Delete Failed AMI"
+        }
+      ],
+      "Default": "Wait 10 seconds"
+    },
+    "Clean AMI Images": {
+      "Type": "Task",
+      "Resource": { "function_name": "clean_ami_images"},
+      "Next": "Report Status"
+    },
+    "Wait 10 seconds": {
+      "Type": "Wait",
+      "Seconds" : 10,
+      "Next": "Check AMI Status"
+    },
+    "Delete Failed AMI": {
+      "Type": "Task",
+      "Resource": { "function_name": "delete_ami"},
+      "Next": "Report Status"
+    },
+    "Report Status": {
+      "Type": "Task",
+      "Resource": { "function_name": "report_status"},
+      "End": true
+    }
+  }
+}
